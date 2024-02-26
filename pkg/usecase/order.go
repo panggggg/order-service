@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/panggggg/order-service/pkg/entity"
 	"github.com/panggggg/order-service/pkg/repository"
@@ -14,7 +15,6 @@ type Order interface {
 	GetOrderById(ctx context.Context, orderId string) (entity.Order, error)
 	CreateOrder(ctx context.Context, order entity.Order) (*primitive.ObjectID, error)
 	UpdateOrder(ctx context.Context, orderId string, updateData entity.Order) (bool, error)
-	CreateOrderStatus(ctx context.Context, order entity.OrderStatus) (*primitive.ObjectID, error)
 	SendOrdersToQueue(ctx context.Context, order []string) error
 }
 
@@ -42,22 +42,36 @@ func (r order) CreateOrder(ctx context.Context, order entity.Order) (*primitive.
 
 func (r order) UpdateOrder(ctx context.Context, orderId string, updateData entity.Order) (bool, error) {
 	// wait group
-	fmt.Println(updateData)
-	id, err := r.orderRepo.CreateOrderStatus(ctx, updateData)
-	fmt.Println(id)
-	if err != nil {
-		return false, err
-	}
-	_, err = r.orderRepo.UpdateOrder(ctx, orderId, updateData)
-	if err != nil {
-		return false, err
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	var UpdateError error
+
+	go func() {
+		defer wg.Done()
+		id, err := r.orderRepo.CreateOrderStatus(ctx, updateData)
+		fmt.Println(id)
+		if err != nil {
+			UpdateError = err
+			return
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		_, err := r.orderRepo.UpdateOrder(ctx, orderId, updateData)
+		if err != nil {
+			UpdateError = err
+			return
+		}
+	}()
+
+	wg.Wait()
+
+	if UpdateError != nil {
+		return false, UpdateError
 	}
 	return true, nil
-}
-
-func (r order) CreateOrderStatus(ctx context.Context, order entity.OrderStatus) (*primitive.ObjectID, error) {
-	// return r.orderRepo.CreateOrderStatus(ctx, order)
-	return nil, nil
 }
 
 func (r order) SendOrdersToQueue(ctx context.Context, order []string) error {

@@ -125,7 +125,7 @@ func (o order) SendOrderToQueue(ctx context.Context, order []string) error {
 	}
 	fmt.Println(formatOrder)
 
-	err = o.rabbitmqAdapter.Publish(ctx, "order:job", body)
+	err = o.rabbitmqAdapter.Publish(ctx, o.config.OrderQueueName, body)
 	if err != nil {
 		fmt.Println("Cannot publish message")
 		return err

@@ -25,7 +25,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	mongodbClient, err := database.NewMongoDBConnection(ctx, "mongodb://root:root@localhost:27017/?authSource=admin")
+	mongodbClient, err := database.NewMongoDBConnection(ctx, cfg.MongoDBURI)
 	if err != nil {
 		panic(err)
 	}
@@ -38,11 +38,11 @@ func main() {
 		}
 	}()
 
-	orderCollection := mongodbClient.Database("go_workshop").Collection("order")
-	orderStatusCollection := mongodbClient.Database("go_workshop").Collection("order_status")
+	orderCollection := mongodbClient.Database(cfg.DatabaseName).Collection(cfg.OrderCollection)
+	orderStatusCollection := mongodbClient.Database(cfg.DatabaseName).Collection(cfg.OrderStatusCollection)
 
-	queueNames := []string{"order:job"}
-	rabbitmqAdapter, err := queue.NewRabbitMQ("amqp://root:root@localhost:5672/", queue.QueueConfig{
+	queueNames := []string{cfg.OrderQueueName}
+	rabbitmqAdapter, err := queue.NewRabbitMQ(cfg.RabbitMQURI, queue.QueueConfig{
 		QueueNames:   queueNames,
 		ExchangeName: "order",
 		ExchangeType: "direct",

@@ -96,23 +96,6 @@ func (o order) UpdateOrder(c echo.Context) error {
 	return c.JSON(http.StatusOK, updateData)
 }
 
-func (o order) SaveOrderStatus(c echo.Context) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	order := entity.OrderStatus{}
-	if err := c.Bind(&order); err != nil {
-		return c.NoContent(http.StatusBadRequest)
-	}
-
-	_, err := o.orderUsecase.CreateOrderStatus(ctx, order)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	return c.JSON(http.StatusOK, order)
-}
-
 func (o order) UploadCsvFile(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
