@@ -44,8 +44,8 @@ func main() {
 	queueNames := []string{cfg.OrderQueueName}
 	rabbitmqAdapter, err := queue.NewRabbitMQ(cfg.RabbitMQURI, queue.QueueConfig{
 		QueueNames:   queueNames,
-		ExchangeName: "order",
-		ExchangeType: "direct",
+		ExchangeName: cfg.OrderExchangeName,
+		ExchangeType: cfg.OrderExchangeType,
 	})
 	if err != nil {
 		log.Panic(err)

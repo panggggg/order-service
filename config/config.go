@@ -15,6 +15,11 @@ type Config struct {
 	OrderErrorQueueName   string `env:"ORDER_ERROR_QUEUE_NAME"`
 	OrderExchangeName     string `env:"ORDER_EXCHANGE_NAME"`
 	OrderExchangeType     string `env:"ORDER_EXCHANGE_TYPE"`
+	RedisHost             string `env:"REDIS_HOST"`
+	RedisPort             int    `env:"REDIS_PORT"`
+	RedisPass             string `env:"REDIS_PASS"`
+	RedisDB               int    `env:"REDIS_DB"`
+	OrderApiURL           string `env:"ORDER_API"`
 }
 
 func NewConfig() Config {

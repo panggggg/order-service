@@ -19,7 +19,7 @@ type Order interface {
 	GetOrders(c echo.Context) error
 	GetOrderById(c echo.Context) error
 	CreateOrder(c echo.Context) error
-	UpdateOrder(c echo.Context) error
+	Upsert(c echo.Context) error
 	UploadCsvFile(c echo.Context) error
 }
 
@@ -78,7 +78,7 @@ func (o order) CreateOrder(c echo.Context) error {
 	return c.JSON(http.StatusOK, order)
 }
 
-func (o order) UpdateOrder(c echo.Context) error {
+func (o order) Upsert(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -88,7 +88,7 @@ func (o order) UpdateOrder(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	_, err := o.orderUsecase.UpdateOrder(ctx, orderId, updateData)
+	_, err := o.orderUsecase.Upsert(ctx, orderId, updateData)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -130,5 +130,10 @@ func (o order) UploadCsvFile(c echo.Context) error {
 		}
 	}
 
-	return c.String(http.StatusOK, "File uploaded successfully")
+	response := map[string]string{
+		"status":  "success",
+		"message": "File uploaded successfully",
+	}
+
+	return c.JSON(http.StatusOK, response)
 }

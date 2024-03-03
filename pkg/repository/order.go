@@ -19,7 +19,7 @@ type Order interface {
 	GetOrders(ctx context.Context) ([]entity.Order, error)
 	GetOrderById(ctx context.Context, orderId string) (entity.Order, error)
 	CreateOrder(ctx context.Context, order entity.Order) (*primitive.ObjectID, error)
-	UpdateOrder(ctx context.Context, orderId string, updateData entity.Order) (bool, error)
+	Upsert(ctx context.Context, orderId string, updateData entity.Order) (bool, error)
 	CreateOrderStatus(ctx context.Context, order entity.Order) (*primitive.ObjectID, error)
 	SendOrderToQueue(ctx context.Context, order []string) error
 }
@@ -78,7 +78,7 @@ func (o order) CreateOrder(ctx context.Context, order entity.Order) (*primitive.
 	return result, nil
 }
 
-func (o order) UpdateOrder(ctx context.Context, orderId string, updateData entity.Order) (bool, error) {
+func (o order) Upsert(ctx context.Context, orderId string, updateData entity.Order) (bool, error) {
 	query := bson.M{
 		"_id": "order_" + orderId,
 	}

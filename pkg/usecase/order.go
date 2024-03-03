@@ -14,7 +14,7 @@ type Order interface {
 	GetOrders(ctx context.Context) ([]entity.Order, error)
 	GetOrderById(ctx context.Context, orderId string) (entity.Order, error)
 	CreateOrder(ctx context.Context, order entity.Order) (*primitive.ObjectID, error)
-	UpdateOrder(ctx context.Context, orderId string, updateData entity.Order) (bool, error)
+	Upsert(ctx context.Context, orderId string, updateData entity.Order) (bool, error)
 	SendOrdersToQueue(ctx context.Context, order []string) error
 }
 
@@ -40,7 +40,7 @@ func (r order) CreateOrder(ctx context.Context, order entity.Order) (*primitive.
 	return r.orderRepo.CreateOrder(ctx, order)
 }
 
-func (r order) UpdateOrder(ctx context.Context, orderId string, updateData entity.Order) (bool, error) {
+func (r order) Upsert(ctx context.Context, orderId string, updateData entity.Order) (bool, error) {
 	// wait group
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -48,6 +48,7 @@ func (r order) UpdateOrder(ctx context.Context, orderId string, updateData entit
 	var UpdateError error
 
 	go func() {
+		fmt.Println("Save status")
 		defer wg.Done()
 		id, err := r.orderRepo.CreateOrderStatus(ctx, updateData)
 		fmt.Println(id)
@@ -59,7 +60,8 @@ func (r order) UpdateOrder(ctx context.Context, orderId string, updateData entit
 
 	go func() {
 		defer wg.Done()
-		_, err := r.orderRepo.UpdateOrder(ctx, orderId, updateData)
+		fmt.Println("Save Order")
+		_, err := r.orderRepo.Upsert(ctx, orderId, updateData)
 		if err != nil {
 			UpdateError = err
 			return
