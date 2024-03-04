@@ -31,7 +31,9 @@ func main() {
 		ExchangeType:    cfg.OrderExchangeType,
 		RoutingKey:      cfg.OrderQueueName,
 		DeadLetter: []map[string]interface{}{
-			{"x-message-ttl": 10000},
+			{
+				"x-message-ttl": 10000,
+			},
 		},
 	})
 	if err != nil {
@@ -62,7 +64,7 @@ func main() {
 		isExisted, err := orderUsecase.IsExist(ctx, order)
 		if isExisted {
 			// dead letter
-			log.Println("This order is exist")
+			log.Println("**** This order is exist ****")
 			job.Reject(false)
 			continue
 		}
