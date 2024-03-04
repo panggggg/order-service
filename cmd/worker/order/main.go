@@ -22,25 +22,32 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	queueNames := []string{cfg.OrderDLQ}
+	errorQueueNames := []string{cfg.OrderErrorQueueName}
 	rabbitmqAdapter, err := queue.NewRabbitMQ(cfg.RabbitMQURI, queue.QueueConfig{
-		QueueNames:      []string{},
-		ErrorQueueNames: []string{},
-		ExchangeName:    "save-order",
-		ExchangeType:    "direct",
+		QueueNames:      queueNames,
+		ErrorQueueNames: errorQueueNames,
+		ExchangeName:    cfg.OrderDLX,
+		ExchangeType:    cfg.OrderExchangeType,
+		RoutingKey:      cfg.OrderQueueName,
+		DeadLetter: []map[string]interface{}{
+			{"x-message-ttl": 10000},
+		},
 	})
 	if err != nil {
 		log.Panic(err)
 	}
+	defer rabbitmqAdapter.CleanUp()
 
-	redisAdapter := cache.NewRedis("localhost", 6379, "root", 0, ctx)
+	redisAdapter := cache.NewRedis(cfg.RedisHost, cfg.RedisPort, cfg.RedisPass, 0, ctx)
 
 	orderApi := adapter.NewOrderAPI(cfg)
 
-	orderRepo := repository.NewSaveOrder(orderApi)
-
-	orderUsecase := usecase.NewSaveOrder(orderRepo, redisAdapter)
+	orderRepo := repository.NewOrder(nil, nil, nil, nil, cfg, orderApi)
+	orderUsecase := usecase.NewOrder(orderRepo, redisAdapter)
 
 	jobs, err := rabbitmqAdapter.Consume(cfg.OrderQueueName, 1)
+	log.Println("Start consume message...")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -54,14 +61,16 @@ func main() {
 
 		isExisted, err := orderUsecase.IsExist(ctx, order)
 		if isExisted {
-			job.Ack(false)
+			// dead letter
+			log.Println("This order is exist")
+			job.Reject(false)
 			continue
 		}
 		if err != nil {
 			log.Panic(err)
 		}
 
-		err = orderUsecase.SaveOrderStatus(ctx, order)
+		err = orderUsecase.Set(ctx, order)
 		if err != nil {
 			log.Panic(err)
 		}

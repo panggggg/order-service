@@ -9,10 +9,6 @@ import (
 func NewRoute(config config.Config, app *echo.Echo, orderHandler handler.Order) {
 	o := app.Group("/order")
 
-	o.GET("", orderHandler.GetOrders)
-	o.GET("/:id", orderHandler.GetOrderById)
-	o.POST("", orderHandler.CreateOrder)
-
-	o.PATCH("/:id", orderHandler.Upsert)        // <---- insert & update
-	o.POST("/file", orderHandler.UploadCsvFile) // <----- request with csv file
+	o.PATCH("/:id", orderHandler.Upsert)
+	o.POST("/file", orderHandler.UploadCsvFile)
 }

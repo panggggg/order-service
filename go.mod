@@ -9,7 +9,7 @@ require (
 	github.com/go-playground/validator/v10 v10.18.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.11.4
-	github.com/wisesight/spider-go-utilities v1.0.17
+	github.com/wisesight/spider-go-utilities v1.0.13-0.20240205095745-c00e0928fcbf
 	go.mongodb.org/mongo-driver v1.12.1
 	go.uber.org/zap v1.26.0
 )
@@ -18,7 +18,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
-	github.com/go-sql-driver/mysql v1.7.1 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect

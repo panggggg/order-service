@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/panggggg/order-service/config"
+	"github.com/panggggg/order-service/pkg/adapter"
 	"github.com/panggggg/order-service/pkg/entity"
 	"github.com/wisesight/spider-go-utilities/database"
 	"github.com/wisesight/spider-go-utilities/queue"
@@ -16,12 +17,10 @@ import (
 )
 
 type Order interface {
-	GetOrders(ctx context.Context) ([]entity.Order, error)
-	GetOrderById(ctx context.Context, orderId string) (entity.Order, error)
-	CreateOrder(ctx context.Context, order entity.Order) (*primitive.ObjectID, error)
 	Upsert(ctx context.Context, orderId string, updateData entity.Order) (bool, error)
-	CreateOrderStatus(ctx context.Context, order entity.Order) (*primitive.ObjectID, error)
-	SendOrderToQueue(ctx context.Context, order []string) error
+	Set(ctx context.Context, order entity.Order) (*primitive.ObjectID, error)
+	SendToQueue(ctx context.Context, order []string) error
+	SaveWithId(order entity.Order) error
 }
 
 type order struct {
@@ -30,52 +29,18 @@ type order struct {
 	rabbitmqAdapter       queue.RabbitMQ
 	orderStatusCollection database.MongoCollection
 	config                config.Config
+	orderApiAdapter       adapter.OrderAPI
 }
 
-func NewOrder(mongoDBAdapter database.MongoDB, orderCollection database.MongoCollection, orderStatusCollection database.MongoCollection, rabbitmqAdapter queue.RabbitMQ, config config.Config) Order {
+func NewOrder(mongoDBAdapter database.MongoDB, orderCollection database.MongoCollection, orderStatusCollection database.MongoCollection, rabbitmqAdapter queue.RabbitMQ, config config.Config, orderApiAdapter adapter.OrderAPI) Order {
 	return &order{
 		mongodbAdapter:        mongoDBAdapter,
 		orderCollection:       orderCollection,
 		orderStatusCollection: orderStatusCollection,
 		rabbitmqAdapter:       rabbitmqAdapter,
 		config:                config,
+		orderApiAdapter:       orderApiAdapter,
 	}
-}
-
-func (o order) GetOrders(ctx context.Context) ([]entity.Order, error) {
-	var result []entity.Order
-	query := bson.M{
-		"status": "pending",
-	}
-	err := o.mongodbAdapter.Find(ctx, o.orderCollection, &result, query)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (o order) GetOrderById(ctx context.Context, orderId string) (entity.Order, error) {
-	var result entity.Order
-	query := bson.M{
-		"_id": "order_" + orderId,
-	}
-	err := o.mongodbAdapter.FindOne(ctx, o.orderCollection, &result, query)
-	if err != nil {
-		return entity.Order{}, err
-	}
-	return result, nil
-}
-
-func (o order) CreateOrder(ctx context.Context, order entity.Order) (*primitive.ObjectID, error) {
-	formattedOrder := entity.Order{
-		OrderId: order.OrderId,
-		Status:  order.Status,
-	}
-	result, err := o.mongodbAdapter.InsertOne(ctx, o.orderCollection, formattedOrder)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
 }
 
 func (o order) Upsert(ctx context.Context, orderId string, updateData entity.Order) (bool, error) {
@@ -99,7 +64,7 @@ func (o order) Upsert(ctx context.Context, orderId string, updateData entity.Ord
 	return true, nil
 }
 
-func (o order) CreateOrderStatus(ctx context.Context, order entity.Order) (*primitive.ObjectID, error) {
+func (o order) Set(ctx context.Context, order entity.Order) (*primitive.ObjectID, error) {
 	formatData := map[string]interface{}{
 		"order_id":   order.OrderId,
 		"status":     order.Status,
@@ -113,7 +78,7 @@ func (o order) CreateOrderStatus(ctx context.Context, order entity.Order) (*prim
 	return result, nil
 }
 
-func (o order) SendOrderToQueue(ctx context.Context, order []string) error {
+func (o order) SendToQueue(ctx context.Context, order []string) error {
 	var formatOrder = entity.OrderStatus{
 		OrderId: order[0],
 		Status:  order[1],
@@ -134,4 +99,8 @@ func (o order) SendOrderToQueue(ctx context.Context, order []string) error {
 	fmt.Println("Publish order to queue success")
 
 	return nil
+}
+
+func (o order) SaveWithId(order entity.Order) error {
+	return o.orderApiAdapter.SaveOrder(order)
 }

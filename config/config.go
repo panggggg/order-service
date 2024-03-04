@@ -15,6 +15,8 @@ type Config struct {
 	OrderErrorQueueName   string `env:"ORDER_ERROR_QUEUE_NAME"`
 	OrderExchangeName     string `env:"ORDER_EXCHANGE_NAME"`
 	OrderExchangeType     string `env:"ORDER_EXCHANGE_TYPE"`
+	OrderDLX              string `env:"ORDER_DLX"`
+	OrderDLQ              string `env:"ORDER_DLQ"`
 	RedisHost             string `env:"REDIS_HOST"`
 	RedisPort             int    `env:"REDIS_PORT"`
 	RedisPass             string `env:"REDIS_PASS"`

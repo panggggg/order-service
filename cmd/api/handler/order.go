@@ -16,9 +16,6 @@ import (
 )
 
 type Order interface {
-	GetOrders(c echo.Context) error
-	GetOrderById(c echo.Context) error
-	CreateOrder(c echo.Context) error
 	Upsert(c echo.Context) error
 	UploadCsvFile(c echo.Context) error
 }
@@ -33,67 +30,22 @@ func NewOrder(orderUsecase usecase.Order) Order {
 	}
 }
 
-func (o order) GetOrders(c echo.Context) error {
-	if o.orderUsecase == nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "orderUsecase is not initialized")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	res, err := o.orderUsecase.GetOrders(ctx)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(http.StatusOK, res)
-}
-
-func (o order) GetOrderById(c echo.Context) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	orderId := c.Param("id")
-	res, err := o.orderUsecase.GetOrderById(ctx, orderId)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, err.Error())
-	}
-
-	return c.JSON(http.StatusOK, res)
-}
-
-func (o order) CreateOrder(c echo.Context) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	order := entity.Order{}
-	if err := c.Bind(&order); err != nil {
-		return c.NoContent(http.StatusBadRequest)
-	}
-
-	_, err := o.orderUsecase.CreateOrder(ctx, order)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	return c.JSON(http.StatusOK, order)
-}
-
 func (o order) Upsert(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	orderId := c.Param("id")
-	var updateData entity.Order
-	if err := c.Bind(&updateData); err != nil {
+	var upsertData entity.Order
+	if err := c.Bind(&upsertData); err != nil {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	_, err := o.orderUsecase.Upsert(ctx, orderId, updateData)
+	_, err := o.orderUsecase.Upsert(ctx, orderId, upsertData)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, updateData)
+	return c.JSON(http.StatusOK, upsertData)
 }
 
 func (o order) UploadCsvFile(c echo.Context) error {
@@ -124,7 +76,7 @@ func (o order) UploadCsvFile(c echo.Context) error {
 	}
 	for _, v := range orders[1:] {
 		fmt.Println(v)
-		err = o.orderUsecase.SendOrdersToQueue(ctx, v)
+		err = o.orderUsecase.SendToQueue(ctx, v)
 		if err != nil {
 			log.Panic(err)
 		}

@@ -46,14 +46,17 @@ func main() {
 		QueueNames:   queueNames,
 		ExchangeName: cfg.OrderExchangeName,
 		ExchangeType: cfg.OrderExchangeType,
+		DeadLetter: []map[string]interface{}{
+			{"x-dead-letter-exchange": cfg.OrderDLX},
+		},
 	})
 	if err != nil {
 		log.Panic(err)
 	}
 	defer rabbitmqAdapter.CleanUp()
 
-	orderRepo := repository.NewOrder(mongodbAdapter, orderCollection, orderStatusCollection, rabbitmqAdapter, cfg)
-	orderUsecase := usecase.NewOrder(orderRepo)
+	orderRepo := repository.NewOrder(mongodbAdapter, orderCollection, orderStatusCollection, rabbitmqAdapter, cfg, nil)
+	orderUsecase := usecase.NewOrder(orderRepo, nil)
 
 	app := echo.New()
 

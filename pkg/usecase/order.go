@@ -2,42 +2,36 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
+	"time"
 
 	"github.com/panggggg/order-service/pkg/entity"
 	"github.com/panggggg/order-service/pkg/repository"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/wisesight/spider-go-utilities/cache"
 )
 
 type Order interface {
-	GetOrders(ctx context.Context) ([]entity.Order, error)
-	GetOrderById(ctx context.Context, orderId string) (entity.Order, error)
-	CreateOrder(ctx context.Context, order entity.Order) (*primitive.ObjectID, error)
 	Upsert(ctx context.Context, orderId string, updateData entity.Order) (bool, error)
-	SendOrdersToQueue(ctx context.Context, order []string) error
+	SendToQueue(ctx context.Context, order []string) error
+
+	IsExist(ctx context.Context, order entity.Order) (bool, error)
+	Set(ctx context.Context, order entity.Order) error
+	Save(order entity.Order) error
 }
 
 type order struct {
-	orderRepo repository.Order
+	orderRepo    repository.Order
+	redisAdapter cache.Redis
 }
 
-func NewOrder(orderRepo repository.Order) Order {
+func NewOrder(orderRepo repository.Order, redisAdapter cache.Redis) Order {
 	return &order{
 		orderRepo,
+		redisAdapter,
 	}
-}
-
-func (r order) GetOrders(ctx context.Context) ([]entity.Order, error) {
-	return r.orderRepo.GetOrders(ctx)
-}
-
-func (r order) GetOrderById(ctx context.Context, orderId string) (entity.Order, error) {
-	return r.orderRepo.GetOrderById(ctx, orderId)
-}
-
-func (r order) CreateOrder(ctx context.Context, order entity.Order) (*primitive.ObjectID, error) {
-	return r.orderRepo.CreateOrder(ctx, order)
 }
 
 func (r order) Upsert(ctx context.Context, orderId string, updateData entity.Order) (bool, error) {
@@ -45,37 +39,71 @@ func (r order) Upsert(ctx context.Context, orderId string, updateData entity.Ord
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	var UpdateError error
+	var updateError error
 
 	go func() {
-		fmt.Println("Save status")
+		log.Println("Save Status")
 		defer wg.Done()
-		id, err := r.orderRepo.CreateOrderStatus(ctx, updateData)
-		fmt.Println(id)
+		_, err := r.orderRepo.Set(ctx, updateData)
 		if err != nil {
-			UpdateError = err
+			updateError = err
 			return
 		}
 	}()
 
 	go func() {
+		log.Println("Save Order")
 		defer wg.Done()
-		fmt.Println("Save Order")
 		_, err := r.orderRepo.Upsert(ctx, orderId, updateData)
 		if err != nil {
-			UpdateError = err
+			updateError = err
 			return
 		}
 	}()
 
 	wg.Wait()
 
-	if UpdateError != nil {
-		return false, UpdateError
+	if updateError != nil {
+		return false, updateError
 	}
 	return true, nil
 }
 
-func (r order) SendOrdersToQueue(ctx context.Context, order []string) error {
-	return r.orderRepo.SendOrderToQueue(ctx, order)
+func (r order) SendToQueue(ctx context.Context, order []string) error {
+	return r.orderRepo.SendToQueue(ctx, order)
+}
+
+func (o order) IsExist(ctx context.Context, order entity.Order) (bool, error) {
+	orderId := order.OrderId
+	_, err := o.redisAdapter.Get(orderId)
+	if err != nil {
+		return true, err
+	}
+	// var orderStatus entity.Order
+	// err = json.Unmarshal([]byte(*value), &orderStatus)
+
+	// if err != nil {
+	// 	return false, err
+	// }
+
+	// if value != nil && orderStatus.Status == order.Status {
+	// 	return true, nil
+	// }
+	return false, nil
+}
+
+func (o order) Set(ctx context.Context, order entity.Order) error {
+	value, err := json.Marshal(order)
+	if err != nil {
+		return err
+	}
+	err = o.redisAdapter.Set(fmt.Sprintf("%s_%s", order.OrderId, order.Status), string(value), 60*time.Hour)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o order) Save(order entity.Order) error {
+	return o.orderRepo.SaveWithId(order)
 }
